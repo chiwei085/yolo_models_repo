@@ -1,5 +1,11 @@
 ## Export Ultralytics YOLO to ONNX
 
+[![Language: English](https://img.shields.io/badge/Language-English-blue)](./README.md)
+[![語言：繁體中文](https://img.shields.io/badge/%E8%AA%9E%E8%A8%80-%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87-green)](./README.zh-TW.md)
+
+> [!TIP]
+> Prefer Traditional Chinese? See [`README.zh-TW.md`](./README.zh-TW.md).
+
 This repo keeps YOLO weights and exported ONNX artifacts in stable locations for reproducible reruns.
 
 ### Directory layout
@@ -45,6 +51,23 @@ uv run yolo-export-onnx --model yolov8n --imgsz 640 --no-dynamic --opset 13 --de
 Why:
 - Fixed shape is usually more stable for TensorRT/OpenCV integration.
 - It also makes performance comparisons easier and more consistent.
+
+### Download an exported ONNX directly
+
+After this repository is public, you can download exported files from the `raw` URL directly.
+Use `-L` with `curl` to follow redirects.
+
+```bash
+curl -L -o model.onnx \
+  "https://github.com/chiwei085/yolo_models_repo/raw/refs/heads/master/exports/onnx/yolov8n_img640_static_opset13.onnx"
+```
+
+Or use `wget`:
+
+```bash
+wget -O model.onnx \
+  "https://github.com/chiwei085/yolo_models_repo/raw/refs/heads/master/exports/onnx/yolov8n_img640_static_opset13.onnx"
+```
 
 ### CLI options
 
