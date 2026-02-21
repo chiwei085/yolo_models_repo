@@ -1,0 +1,16 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Model artifacts and exports
+models/*.pt
+exports/onnx/*.onnx
+logs/*.log
+*.pt
