@@ -29,6 +29,23 @@ uv run yolo-export-onnx
 Why default `opset=13`:
 - It is generally a safer baseline for cross-runtime compatibility (TensorRT / OpenCV DNN / ONNX Runtime) than newer opsets that may not be fully supported in older deployments.
 
+### Recommended preset
+
+For CPU / OpenCV DNN / ONNX Runtime general use:
+
+- `imgsz=640`
+- `--no-dynamic`
+- `opset=13`
+- `device=cpu`
+
+```bash
+uv run yolo-export-onnx --model yolov8n --imgsz 640 --no-dynamic --opset 13 --device cpu
+```
+
+Why:
+- Fixed shape is usually more stable for TensorRT/OpenCV integration.
+- It also makes performance comparisons easier and more consistent.
+
 ### CLI options
 
 - `--model` (default: `yolov8n`, accepts Ultralytics model id or local path)

@@ -12,14 +12,52 @@ from ultralytics import YOLO
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Export an Ultralytics YOLO model to ONNX.")
-    parser.add_argument("--model", type=str, default="yolov8n")
-    parser.add_argument("--imgsz", type=int, default=640)
-    parser.add_argument("--dynamic", action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument("--opset", type=int, default=13)
-    parser.add_argument("--device", type=str, default="cpu")
-    parser.add_argument("--out-dir", type=str, default="exports/onnx")
-    parser.add_argument("--force", action="store_true")
-    parser.add_argument("--verbose", action="store_true")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="yolov8n",
+        help="Ultralytics model id or local path (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--imgsz",
+        type=int,
+        default=640,
+        help="Input image size, e.g. 320/512/640/960/1280 (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--dynamic",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Enable dynamic shape export (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--opset",
+        type=int,
+        default=13,
+        help="ONNX opset version (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cpu",
+        help="Export device, e.g. cpu or cuda:0 (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=str,
+        default="exports/onnx",
+        help="Output directory for ONNX files (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite target ONNX if it exists (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose Ultralytics logs (default: %(default)s)",
+    )
     return parser
 
 
