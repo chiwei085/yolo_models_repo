@@ -11,6 +11,5 @@ wheels/
 
 # Model artifacts and exports
 models/*.pt
-exports/onnx/*.onnx
 logs/*.log
 *.pt
