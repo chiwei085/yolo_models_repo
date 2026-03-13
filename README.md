@@ -6,22 +6,24 @@
 > [!TIP]
 > Prefer Traditional Chinese? See [`README.zh-TW.md`](./README.zh-TW.md).
 
-This public repo stores YOLO weights and exported ONNX artifacts in stable paths so they can be reused directly or regenerated with the same CLI workflow.
-
-### Directory layout
-
-- `models/`: downloaded `.pt` weights (example: `models/yolov8n.pt`)
-- `exports/onnx/`: exported ONNX files (example: `exports/onnx/yolov8n_img640_static_opset13.onnx`)
-- `tools/export_onnx.py`: CLI exporter
+This repo provides an installable CLI for exporting Ultralytics YOLO models to ONNX, plus a few checked-in example artifacts.
 
 Supported model inputs:
 - Ultralytics model ids (for current supported families), e.g. `yolov8n`, `yolo11n`, `yolo11n-seg`, `yolo11n-pose`, `yolo11n-cls`, `yolo11n-obb`
 - Local model path, e.g. `./checkpoints/custom.pt` or `./configs/model.yaml`
 
-### Install dependencies (uv)
+### Install
+
+With `uv`:
 
 ```bash
-uv add ultralytics onnx numpy loguru
+uv tool install .
+```
+
+Or with `pip`:
+
+```bash
+pip install .
 ```
 
 ### Export command
@@ -29,7 +31,7 @@ uv add ultralytics onnx numpy loguru
 Default behavior is static input shape (`--no-dynamic`) with opset 13:
 
 ```bash
-uv run yolo-export-onnx
+yolo-export-onnx
 ```
 
 Why default `opset=13`:
@@ -45,7 +47,7 @@ For CPU / OpenCV DNN / ONNX Runtime general use:
 - `device=cpu`
 
 ```bash
-uv run yolo-export-onnx --model yolov8n --imgsz 640 --no-dynamic --opset 13 --device cpu
+yolo-export-onnx --model yolov8n --imgsz 640 --no-dynamic --opset 13 --device cpu
 ```
 
 Why:
@@ -76,46 +78,63 @@ wget -O model.onnx \
 - `--dynamic` / `--no-dynamic` (default: static)
 - `--opset` (default: `13`)
 - `--device` (default: `cpu`)
-- `--out-dir` (default: `exports/onnx`)
+- `--out-dir` (default: `exports/onnx` relative to the current working directory)
+- `--output-name` (explicit ONNX filename)
+- `--cache-dir` (override the user cache directory used for downloaded weights)
+- `--log-file` (optional persistent error log file)
 - `--force` (overwrite existing file)
 - `--verbose` (more Ultralytics logs)
+
+### Path behavior
+
+- Default output path: `./exports/onnx/` under the directory where you run the command
+- Default cache path: platform user cache dir, e.g. `~/.cache/yolo-export-onnx/weights/` on Linux
+- Default log file: none; errors are printed to stderr unless `--log-file` is provided
+
+For local model paths, the generated filename includes a short path hash to avoid collisions between files with the same basename.
 
 ### Examples
 
 Export `yolov8n` static 640:
 
 ```bash
-uv run yolo-export-onnx --model yolov8n --imgsz 640 --no-dynamic --opset 13
+yolo-export-onnx --model yolov8n --imgsz 640 --no-dynamic --opset 13
 ```
 
 Export `yolov8s` static 960 and overwrite if same output name exists:
 
 ```bash
-uv run yolo-export-onnx --model yolov8s --imgsz 960 --no-dynamic --opset 13 --force
+yolo-export-onnx --model yolov8s --imgsz 960 --no-dynamic --opset 13 --force
 ```
 
 Export dynamic shape ONNX:
 
 ```bash
-uv run yolo-export-onnx --model yolov8n --imgsz 640 --dynamic --opset 13
+yolo-export-onnx --model yolov8n --imgsz 640 --dynamic --opset 13
 ```
 
 Export segmentation model (`yolo11n-seg`):
 
 ```bash
-uv run yolo-export-onnx --model yolo11n-seg --imgsz 640 --no-dynamic --opset 13
+yolo-export-onnx --model yolo11n-seg --imgsz 640 --no-dynamic --opset 13
 ```
 
 Export pose model (`yolo11n-pose`):
 
 ```bash
-uv run yolo-export-onnx --model yolo11n-pose --imgsz 640 --no-dynamic --opset 13
+yolo-export-onnx --model yolo11n-pose --imgsz 640 --no-dynamic --opset 13
 ```
 
 Custom output directory:
 
 ```bash
-uv run yolo-export-onnx --model yolov8n --imgsz 512 --out-dir exports/onnx --force
+yolo-export-onnx --model yolov8n --imgsz 512 --out-dir ./artifacts/onnx --force
+```
+
+Explicit output name and log file:
+
+```bash
+yolo-export-onnx --model ./checkpoints/custom.pt --output-name detector.onnx --log-file ./logs/export.log
 ```
 
 ### Export result output
@@ -126,11 +145,12 @@ On success, the tool prints:
 - `Input: <name:shape>`
 - `Output: <name:shape>`
 - `Size: <MB>`
+- `Cache: <path>` when a cached `.pt` weight file is used or updated
 
 On failure:
-- Error details are appended to `logs/export_onnx.log`
-- CLI prints a short message that points to the log file
+- CLI prints the error summary to stderr
+- If `--log-file` is set, the same error is also written there
 
 Model download behavior:
-- If the source resolves to a `.pt` model and `models/<model_tag>.pt` exists, it is reused and not downloaded again.
-- If a `.pt` model is downloaded by Ultralytics, the script persists it into `models/` for future reruns.
+- Downloaded `.pt` weights are cached in the user cache directory unless `--cache-dir` is provided.
+- Local model paths are used directly and are not copied into the cache.

@@ -11,5 +11,4 @@ wheels/
 
 # Model artifacts and exports
 models/*.pt
-logs/*.log
 *.pt
