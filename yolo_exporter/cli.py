@@ -1,18 +1,22 @@
-import argparse
 import hashlib
 import shutil
 import sys
-from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Annotated
 
 import onnx
+import typer
 from loguru import logger
 from platformdirs import user_cache_dir
 from ultralytics import YOLO
 
-
 APP_NAME = "yolo-export-onnx"
+app = typer.Typer(
+    add_completion=False,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    no_args_is_help=False,
+)
 
 
 @dataclass(slots=True)
@@ -24,73 +28,19 @@ class ModelSpec:
     cache_path: Path | None
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Export an Ultralytics YOLO model to ONNX.")
-    parser.add_argument(
-        "--model",
-        type=str,
-        default="yolov8n",
-        help="Ultralytics model id or local path (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--imgsz",
-        type=int,
-        default=640,
-        help="Input image size, e.g. 320/512/640/960/1280 (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--dynamic",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Enable dynamic shape export (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--opset",
-        type=int,
-        default=13,
-        help="ONNX opset version (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="cpu",
-        help="Export device, e.g. cpu or cuda:0 (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--out-dir",
-        type=Path,
-        default=Path("exports/onnx"),
-        help="Output directory for ONNX files, relative to the current working directory when not absolute (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--output-name",
-        type=str,
-        default=None,
-        help="Optional explicit ONNX filename; .onnx is appended when missing",
-    )
-    parser.add_argument(
-        "--cache-dir",
-        type=Path,
-        default=None,
-        help="Override the model cache directory (default: platform user cache dir)",
-    )
-    parser.add_argument(
-        "--log-file",
-        type=Path,
-        default=None,
-        help="Optional log file path for persistent error logs",
-    )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Overwrite target ONNX if it exists (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose Ultralytics logs (default: %(default)s)",
-    )
-    return parser
+@dataclass(slots=True)
+class ExportOptions:
+    model: str
+    imgsz: int
+    dynamic: bool
+    opset: int
+    device: str
+    out_dir: Path
+    output_name: str | None
+    cache_dir: Path | None
+    log_file: Path | None
+    force: bool
+    verbose: bool
 
 
 def configure_logger(log_file: Path | None) -> None:
@@ -109,7 +59,10 @@ def fail(message: str, code: int = 1, log_file: Path | None = None) -> int:
 
 
 def sanitize_name(value: str) -> str:
-    return "".join(char if char.isalnum() or char in "._-" else "_" for char in value).strip("._-") or "model"
+    return (
+        "".join(char if char.isalnum() or char in "._-" else "_" for char in value).strip("._-")
+        or "model"
+    )
 
 
 def build_model_spec(model_arg: str, cache_dir: Path) -> ModelSpec:
@@ -189,13 +142,17 @@ def resolve_output_dir(out_dir: Path) -> Path:
     return expanded.resolve() if expanded.is_absolute() else (Path.cwd() / expanded).resolve()
 
 
-def build_output_path(args: argparse.Namespace, model_key: str, out_dir: Path) -> Path:
-    if args.output_name:
-        name = args.output_name if args.output_name.endswith(".onnx") else f"{args.output_name}.onnx"
+def build_output_path(options: ExportOptions, model_key: str, out_dir: Path) -> Path:
+    if options.output_name:
+        name = (
+            options.output_name
+            if options.output_name.endswith(".onnx")
+            else f"{options.output_name}.onnx"
+        )
         return out_dir / name
 
-    dyn_tag = "dynamic" if args.dynamic else "static"
-    return out_dir / f"{model_key}_img{args.imgsz}_{dyn_tag}_opset{args.opset}.onnx"
+    dyn_tag = "dynamic" if options.dynamic else "static"
+    return out_dir / f"{model_key}_img{options.imgsz}_{dyn_tag}_opset{options.opset}.onnx"
 
 
 def maybe_cache_weights(yolo: YOLO, cache_path: Path | None) -> None:
@@ -215,36 +172,40 @@ def maybe_cache_weights(yolo: YOLO, cache_path: Path | None) -> None:
         shutil.copy2(ckpt, cache_path)
 
 
-def export_onnx(args: argparse.Namespace) -> int:
-    log_file = args.log_file.expanduser().resolve() if args.log_file else None
+def export_onnx(options: ExportOptions) -> int:
+    log_file = options.log_file.expanduser().resolve() if options.log_file else None
     configure_logger(log_file)
 
     try:
-        cache_dir = resolve_cache_dir(args.cache_dir)
-        out_dir = resolve_output_dir(args.out_dir)
-        model = build_model_spec(args.model, cache_dir)
+        cache_dir = resolve_cache_dir(options.cache_dir)
+        out_dir = resolve_output_dir(options.out_dir)
+        model = build_model_spec(options.model, cache_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
     except (OSError, ValueError) as exc:
         return fail(str(exc), code=2, log_file=log_file)
 
-    target_onnx = build_output_path(args, model.model_key, out_dir)
-    if target_onnx.exists() and not args.force:
-        return fail(f"output already exists: {target_onnx} (use --force to overwrite)", code=2, log_file=log_file)
+    target_onnx = build_output_path(options, model.model_key, out_dir)
+    if target_onnx.exists() and not options.force:
+        return fail(
+            f"output already exists: {target_onnx} (use --force to overwrite)",
+            code=2,
+            log_file=log_file,
+        )
 
     try:
         yolo = YOLO(model.load_ref)
         if model.cache_weights:
             maybe_cache_weights(yolo, model.cache_path)
-        if target_onnx.exists() and args.force:
+        if target_onnx.exists() and options.force:
             target_onnx.unlink()
         exported = yolo.export(
             format="onnx",
-            imgsz=args.imgsz,
-            dynamic=args.dynamic,
-            opset=args.opset,
+            imgsz=options.imgsz,
+            dynamic=options.dynamic,
+            opset=options.opset,
             simplify=False,
-            device=args.device,
-            verbose=args.verbose,
+            device=options.device,
+            verbose=options.verbose,
         )
         exported_path = Path(str(exported)).resolve()
         if exported_path != target_onnx:
@@ -265,9 +226,77 @@ def export_onnx(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    return export_onnx(build_parser().parse_args(argv))
+@app.command()
+def export(
+    model: Annotated[
+        str,
+        typer.Option(help="Ultralytics model id or local path."),
+    ] = "yolov8n",
+    imgsz: Annotated[
+        int,
+        typer.Option(help="Input image size, e.g. 320/512/640/960/1280."),
+    ] = 640,
+    dynamic: Annotated[
+        bool,
+        typer.Option("--dynamic/--no-dynamic", help="Enable dynamic shape export."),
+    ] = False,
+    opset: Annotated[
+        int,
+        typer.Option(help="ONNX opset version."),
+    ] = 13,
+    device: Annotated[
+        str,
+        typer.Option(help="Export device, e.g. cpu or cuda:0."),
+    ] = "cpu",
+    out_dir: Annotated[
+        Path,
+        typer.Option(
+            help=(
+                "Output directory for ONNX files, relative to the current working "
+                "directory when not absolute."
+            )
+        ),
+    ] = Path("exports/onnx"),
+    output_name: Annotated[
+        str | None,
+        typer.Option(help="Optional explicit ONNX filename; .onnx is appended when missing."),
+    ] = None,
+    cache_dir: Annotated[
+        Path | None,
+        typer.Option(help="Override the model cache directory."),
+    ] = None,
+    log_file: Annotated[
+        Path | None,
+        typer.Option(help="Optional log file path for persistent error logs."),
+    ] = None,
+    force: Annotated[
+        bool,
+        typer.Option(help="Overwrite target ONNX if it exists."),
+    ] = False,
+    verbose: Annotated[
+        bool,
+        typer.Option(help="Enable verbose Ultralytics logs."),
+    ] = False,
+) -> None:
+    options = ExportOptions(
+        model=model,
+        imgsz=imgsz,
+        dynamic=dynamic,
+        opset=opset,
+        device=device,
+        out_dir=out_dir,
+        output_name=output_name,
+        cache_dir=cache_dir,
+        log_file=log_file,
+        force=force,
+        verbose=verbose,
+    )
+    raise typer.Exit(code=export_onnx(options))
+
+
+def main() -> None:
+    app(prog_name=APP_NAME)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()
