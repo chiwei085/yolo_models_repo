@@ -6,7 +6,7 @@
 > [!TIP]
 > 想看英文版？請參考 [`README.md`](./README.md)。
 
-此 repo 將 YOLO 權重與匯出的 ONNX 產物放在固定路徑，方便重現流程與重跑實驗。
+這個公開 repo 將 YOLO 權重與匯出的 ONNX 產物放在固定路徑，方便直接取用，也方便用相同 CLI 流程重新產生。
 
 ## 目錄結構
 
@@ -54,7 +54,7 @@ uv run yolo-export-onnx --model yolov8n --imgsz 640 --no-dynamic --opset 13 --de
 
 ## 直接下載已匯出的 ONNX
 
-當此 repo 為 public 時，可直接透過 `raw` 連結下載匯出檔案。  
+此 repo 已公開，可直接透過 `raw` 連結下載匯出檔案。  
 使用 `curl` 時建議加上 `-L` 以跟隨 redirect。
 
 ```bash

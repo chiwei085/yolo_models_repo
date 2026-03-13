@@ -1,4 +1,4 @@
-## Export Ultralytics YOLO to ONNX
+# Export Ultralytics YOLO to ONNX
 
 [![Language: English](https://img.shields.io/badge/Language-English-blue)](./README.md)
 [![語言：繁體中文](https://img.shields.io/badge/%E8%AA%9E%E8%A8%80-%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87-green)](./README.zh-TW.md)
@@ -6,7 +6,7 @@
 > [!TIP]
 > Prefer Traditional Chinese? See [`README.zh-TW.md`](./README.zh-TW.md).
 
-This repo keeps YOLO weights and exported ONNX artifacts in stable locations for reproducible reruns.
+This public repo stores YOLO weights and exported ONNX artifacts in stable paths so they can be reused directly or regenerated with the same CLI workflow.
 
 ### Directory layout
 
@@ -54,7 +54,7 @@ Why:
 
 ### Download an exported ONNX directly
 
-After this repository is public, you can download exported files from the `raw` URL directly.
+This repository is public, so exported files can be downloaded directly from the `raw` URL.
 Use `-L` with `curl` to follow redirects.
 
 ```bash
